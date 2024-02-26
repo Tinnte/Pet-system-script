@@ -1,0 +1,60 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AllPlayersPets = workspace:WaitForChild("AllPlayerPets")
+local FollowingPet = ReplicatedStorage:WaitForChild("FollowingPet")
+local PetDestroyEvent = ReplicatedStorage:WaitForChild("DestroyAllPets")
+local PetEvent = ReplicatedStorage:WaitForChild("PetEvent")
+local Rando = Random.new()
+local PetMod = {}
+
+PetMod.__index = PetMod
+
+function PetMod.New(PetFold, player)
+	local self = setmetatable({}, PetMod)
+	self.Player = player
+	self.InstanceFold = PetFold
+	self:ChoosePet(self.Player)
+	return self
+end
+
+function PetMod:ChoosePet(player) --Choosing a random pet from the Pets table in ReplicatedStorage
+	
+	local totalValue = 0
+	for i, v in pairs(self.InstanceFold:GetChildren()) do
+		totalValue += v:GetAttribute("Chance")
+	end
+	local randomnumb = Rando:NextNumber(0, totalValue)
+	for i, pet in pairs(self.InstanceFold:GetChildren()) do
+		randomnumb -= pet:GetAttribute("Chance")
+		if randomnumb <= 0 then
+			PetMod:GivePet(pet, player)
+			break
+		end
+	end
+end
+
+function PetMod:GivePet(pet : Instance, player: Player) --Giving to the player the random pet instance
+	
+	local clone = pet:Clone()
+	local PlayerPets = AllPlayersPets:FindFirstChild(player.Name)
+	if PlayerPets:GetAttribute("PlayerId") == player.UserId then
+		clone.Parent = PlayerPets
+		clone.CanCollide = false
+		clone.Anchored = true
+		task.wait(0.1)
+		PetEvent:FireClient(player, clone)
+		FollowingPet:FireClient(player, clone) 
+	end
+end
+
+function PetDestroy(player :Player) 
+	--Destroying all the pets that the player have if the button "deleate all your pets" is pressed with the DestroyingPet local script
+	local PlayerPets = AllPlayersPets:FindFirstChild(player.Name)
+	if PlayerPets:GetAttribute("PlayerId") ~= player.UserId then return end
+	for _, pet in pairs(PlayerPets:GetChildren())	 do
+		pet:Destroy()
+	end
+end
+
+PetDestroyEvent.OnServerEvent:Connect(PetDestroy)
+
+return PetMod
